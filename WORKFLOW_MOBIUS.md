@@ -65,24 +65,24 @@ mutation { commentCreate(input: {issueId: "<UUID>", body: "<BODY>"}) { success }
 
 - `Todo` → Move to `In Progress`, then do work.
 - `In Progress` → Implement, test, push branch, create PR, move to `Human Review`.
-- `Rework` → Read comments, fix, push, update PR, move to `Human Review`.
+- `Rework` → Check out existing branch, read comments, fix, push, update PR, move to `Human Review`.
 - `Human Review` → Do nothing.
 - `Done` → Do nothing.
 
 ## Execution steps
 
 1. Look up issue UUID and state IDs via Linear API (use curl).
-2. If `Todo`, move to `In Progress`.
-3. Post a workpad comment with your plan.
-4. Create a branch: `git checkout -b {{ issue.identifier }}`
-5. Implement the fix.
-6. Run tests: `python -m pytest tests/ -v`
-7. Commit and push: `git add -A && git commit -m "{{ issue.identifier }}: <summary>" && git push -u origin {{ issue.identifier }}`
-8. Create PR: `gh pr create --title "{{ issue.identifier }}: <title>" --body "<description>" --base main`
-9. Post the PR URL in a Linear comment.
-10. Move to `Human Review`.
-
-For `Rework`: checkout existing branch, read comments, fix, push, move to `Human Review`.
+2. Check for existing branch: `git fetch origin && git checkout {{ issue.identifier }} 2>/dev/null || git checkout -b {{ issue.identifier }}`
+3. Check for existing PR: `gh pr list --head {{ issue.identifier }} --json number,url --jq '.[0]'`
+4. If `Todo`, move to `In Progress`.
+5. If `Rework`: read ALL Linear comments to find reviewer feedback.
+6. Post a workpad comment with your plan.
+7. Implement the fix (or address rework feedback).
+8. Run tests: `python -m pytest tests/ -v`
+9. Commit and push: `git add -A && git commit -m "{{ issue.identifier }}: <summary>" && git push -u origin {{ issue.identifier }}`
+10. Create PR if none exists: `gh pr list --head {{ issue.identifier }} --json number | grep -q number || gh pr create --title "{{ issue.identifier }}: <title>" --body "<description>" --base main`
+11. Post the PR URL in a Linear comment (get it with `gh pr view --json url -q .url`).
+12. Move to `Human Review`.
 
 ## Important
 - ALWAYS push your branch and create a PR before moving to Human Review.
