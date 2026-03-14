@@ -155,9 +155,7 @@ def complete_task(task_id):
     task = Task.query.get_or_404(task_id)
     task.completed = True
     db.session.commit()
-    # BUG: should return 200, but returns 201 (Created) instead.
-    # The task was not *created* — it was updated.  Fix: change 201 to 200.
-    return jsonify(task.to_dict()), 201
+    return jsonify(task.to_dict()), 200
 
 
 @bp.route("/tasks/<int:task_id>", methods=["DELETE"])
