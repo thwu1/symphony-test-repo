@@ -1,0 +1,11 @@
+{
+  "issue_id": "MOB-7",
+  "identifier": "MOB-7",
+  "started_at": "2026-03-14 00:22:05.251775+00:00",
+  "finished_at": "2026-03-14T00:24:59.964576+00:00",
+  "turn_count": 1,
+  "diff_bytes": 636,
+  "has_diff": true,
+  "verdict": "solved",
+  "confidence": 1.0
+}
