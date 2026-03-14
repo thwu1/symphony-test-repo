@@ -21,10 +21,8 @@ hooks:
 
 You are working on a Linear ticket `{{ issue.identifier }}`
 
-{% if attempt %}
-This is retry attempt #{{ attempt }}.
-Resume from the current workspace state.
-{% endif %}
+Attempt: {{ attempt }}
+If this is a retry, resume from the current workspace state.
 
 Issue context:
 Identifier: {{ issue.identifier }}
