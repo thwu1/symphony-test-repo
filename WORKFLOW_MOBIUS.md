@@ -9,7 +9,7 @@ workspace:
   repo: /Users/tianhaowu/code/symphony-test-repo
 agent:
   type: claude
-  model: anthropic/claude-sonnet-4-20250514
+  model: anthropic/claude-opus-4-20250514
   max_concurrent: 3
   timeout: 600
 hooks:
