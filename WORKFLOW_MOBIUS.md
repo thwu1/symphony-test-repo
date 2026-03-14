@@ -17,6 +17,8 @@ hooks:
     apt-get update -qq && apt-get install -y -qq gh git jq curl 2>/dev/null || true
     git config --global user.email "symphony@rllm.dev"
     git config --global user.name "Symphony Agent"
+    git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/thwu1/symphony-test-repo.git" 2>/dev/null || true
+    echo "${GITHUB_TOKEN}" | gh auth login --with-token 2>/dev/null || true
 ---
 
 You are working on a Linear ticket `{{ issue.identifier }}`
@@ -34,18 +36,15 @@ URL: {{ issue.url }}
 Description:
 {{ issue.description }}
 
-## Git and GitHub setup
+## Environment
 
-You have `gh` CLI and `GITHUB_TOKEN` available. The repo remote is `https://github.com/thwu1/symphony-test-repo.git`.
-
-Configure git remote with token auth:
-```bash
-git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/thwu1/symphony-test-repo.git
-```
+- `gh` CLI is authenticated and ready to use.
+- Git remote `origin` is configured with push access to `thwu1/symphony-test-repo`.
+- `LINEAR_API_KEY` is available as an environment variable for `curl` calls.
 
 ## CRITICAL: Linear state transitions
 
-Use `curl` with `$LINEAR_API_KEY` to call https://api.linear.app/graphql.
+Use `curl -H "Authorization: $LINEAR_API_KEY"` to call https://api.linear.app/graphql.
 
 ### State lookup
 ```graphql
@@ -72,17 +71,16 @@ mutation { commentCreate(input: {issueId: "<UUID>", body: "<BODY>"}) { success }
 
 ## Execution steps
 
-1. Look up issue UUID and state IDs via Linear API.
+1. Look up issue UUID and state IDs via Linear API (use curl).
 2. If `Todo`, move to `In Progress`.
 3. Post a workpad comment with your plan.
-4. Set up git remote: `git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/thwu1/symphony-test-repo.git`
-5. Create a branch: `git checkout -b {{ issue.identifier }}`
-6. Implement the fix.
-7. Run tests: `cd /root/workspace && python -m pytest tests/ -v`
-8. Commit and push: `git add -A && git commit -m "{{ issue.identifier }}: <summary>" && git push -u origin {{ issue.identifier }}`
-9. Create PR: `gh pr create --title "{{ issue.identifier }}: <title>" --body "<description>" --base main`
-10. Post the PR URL in a Linear comment.
-11. Move to `Human Review`.
+4. Create a branch: `git checkout -b {{ issue.identifier }}`
+5. Implement the fix.
+6. Run tests: `python -m pytest tests/ -v`
+7. Commit and push: `git add -A && git commit -m "{{ issue.identifier }}: <summary>" && git push -u origin {{ issue.identifier }}`
+8. Create PR: `gh pr create --title "{{ issue.identifier }}: <title>" --body "<description>" --base main`
+9. Post the PR URL in a Linear comment.
+10. Move to `Human Review`.
 
 For `Rework`: checkout existing branch, read comments, fix, push, move to `Human Review`.
 
