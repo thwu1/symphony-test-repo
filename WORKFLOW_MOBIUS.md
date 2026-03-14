@@ -13,7 +13,10 @@ agent:
   max_concurrent: 3
   timeout: 600
 hooks:
-  after_create: echo "workspace ready"
+  after_create: |
+    apt-get update -qq && apt-get install -y -qq gh git jq curl 2>/dev/null || true
+    git config --global user.email "symphony@rllm.dev"
+    git config --global user.name "Symphony Agent"
 ---
 
 You are working on a Linear ticket `{{ issue.identifier }}`
@@ -33,53 +36,59 @@ URL: {{ issue.url }}
 Description:
 {{ issue.description }}
 
-## CRITICAL: You MUST use the Linear GraphQL API to transition issue states.
+## Git and GitHub setup
 
-The Linear API endpoint is https://api.linear.app/graphql
-Use the LINEAR_API_KEY environment variable for authentication.
+You have `gh` CLI and `GITHUB_TOKEN` available. The repo remote is `https://github.com/thwu1/symphony-test-repo.git`.
 
-### State lookup query
+Configure git remote with token auth:
+```bash
+git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/thwu1/symphony-test-repo.git
+```
+
+## CRITICAL: Linear state transitions
+
+Use `curl` with `$LINEAR_API_KEY` to call https://api.linear.app/graphql.
+
+### State lookup
 ```graphql
 query { issues(filter: {identifier: {eq: "{{ issue.identifier }}"}}) { nodes { id team { states { nodes { id name } } } } } }
 ```
 
-### Update state mutation
+### Update state
 ```graphql
-mutation { issueUpdate(id: "<ISSUE_UUID>", input: {stateId: "<STATE_UUID>"}) { success } }
+mutation { issueUpdate(id: "<UUID>", input: {stateId: "<STATE_UUID>"}) { success } }
 ```
 
-### Post comment mutation
+### Post comment
 ```graphql
-mutation { commentCreate(input: {issueId: "<ISSUE_UUID>", body: "<BODY>"}) { success } }
+mutation { commentCreate(input: {issueId: "<UUID>", body: "<BODY>"}) { success } }
 ```
 
-### Read comments query
-```graphql
-query { issues(filter: {identifier: {eq: "{{ issue.identifier }}"}}) { nodes { id comments { nodes { body createdAt user { name } } } } } }
-```
+## Status map
 
-## Status map and required transitions
-
-- `Todo` → Immediately move to `In Progress`, then start work.
-- `In Progress` → Do the work. When done, move to `Human Review`.
-- `Rework` → Read ALL comments, address reviewer feedback, then move to `Human Review`.
-- `Human Review` → Do nothing. End turn.
-- `Done` → Do nothing. End turn.
+- `Todo` → Move to `In Progress`, then do work.
+- `In Progress` → Implement, test, push branch, create PR, move to `Human Review`.
+- `Rework` → Read comments, fix, push, update PR, move to `Human Review`.
+- `Human Review` → Do nothing.
+- `Done` → Do nothing.
 
 ## Execution steps
 
-1. Look up the issue UUID and team state IDs using the state lookup query (use curl).
-2. If state is `Todo`, move to `In Progress`.
-3. Post a workpad comment: `## Codex Workpad\n\n### Plan\n- [ ] Investigate\n- [ ] Fix\n- [ ] Test\n- [ ] Verify`
-4. Read the codebase, understand the issue, implement the fix.
-5. Run tests.
-6. Commit changes.
-7. Update workpad comment with results.
-8. Move to `Human Review`.
+1. Look up issue UUID and state IDs via Linear API.
+2. If `Todo`, move to `In Progress`.
+3. Post a workpad comment with your plan.
+4. Set up git remote: `git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/thwu1/symphony-test-repo.git`
+5. Create a branch: `git checkout -b {{ issue.identifier }}`
+6. Implement the fix.
+7. Run tests: `cd /root/workspace && python -m pytest tests/ -v`
+8. Commit and push: `git add -A && git commit -m "{{ issue.identifier }}: <summary>" && git push -u origin {{ issue.identifier }}`
+9. Create PR: `gh pr create --title "{{ issue.identifier }}: <title>" --body "<description>" --base main`
+10. Post the PR URL in a Linear comment.
+11. Move to `Human Review`.
 
-For `Rework`: Read all comments, address feedback, then move back to `Human Review`.
+For `Rework`: checkout existing branch, read comments, fix, push, move to `Human Review`.
 
 ## Important
-- Use `curl` to call the Linear GraphQL API.
-- This is unattended. Never ask a human to perform actions.
-- Work only in this repository copy.
+- ALWAYS push your branch and create a PR before moving to Human Review.
+- This is unattended. Never ask a human.
+- Work only in this repository.
