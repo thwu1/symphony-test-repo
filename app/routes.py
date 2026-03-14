@@ -31,15 +31,11 @@ def create_user():
     username = sanitize_string(data.get("username"), max_length=80)
     email = sanitize_string(data.get("email"), max_length=120)
 
-    # BUG: missing validation — the endpoint never checks whether *username*
-    # or *email* are present.  A request with an empty body (or missing fields)
-    # will crash with an IntegrityError rather than returning a 400.
-    # Fix: add the block below before creating the User object:
-    #
-    #   if not username or not email:
-    #       return jsonify({"error": "username and email are required"}), 400
-    #   if not validate_email(email):
-    #       return jsonify({"error": "Invalid email address"}), 400
+    # Validate required fields
+    if not username or not email:
+        return jsonify({"error": "username and email are required"}), 400
+    if not validate_email(email):
+        return jsonify({"error": "Invalid email address"}), 400
 
     if User.query.filter_by(username=username).first():
         return jsonify({"error": "Username already taken"}), 409
